@@ -1,0 +1,52 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: sample-flask
+labels:
+  template: sample-flask
+  app: sample-flask
+objects:
+- kind: BuildConfig
+  apiVersion: build.openshift.io/v1
+  metadata:
+    name: "${NAME}"
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: "${NAME}:latest"
+    strategy:
+      type: Source
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          namespace: "${NAMESPACE}"
+          name: 'python:3.8-ubi8'
+    source:
+      type: Git
+      git:
+        uri: "${SOURCE_REPOSITORY_URL}"
+        ref: "${SOURCE_REPOSITORY_REF}"
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    annotations:
+      description: Keeps track of changes in the application image
+parameters:
+- name: NAME
+  displayName: Name
+  required: true
+  value: sample-flask
+- name: NAMESPACE
+  displayName: Namespace
+  required: true
+  value: openshift
+- name: SOURCE_REPOSITORY_URL
+  displayName: Git Repository URL
+  required: true
+  value: https://github.com/mosuke5/migration-practice-for-flask
+- name: SOURCE_REPOSITORY_REF
+  displayName: Git Reference
+  required: true
+  value: main

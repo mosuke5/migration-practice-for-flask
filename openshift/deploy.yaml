@@ -1,0 +1,241 @@
+---
+kind: Template
+apiVersion: v1
+metadata:
+  name: sample-flask
+labels:
+  template: sample-flask
+  app: sample-flask
+objects:
+  - kind: Secret
+    apiVersion: v1
+    metadata:
+      name: "${NAME}"
+    stringData:
+      database-user: "${DATABASE_USER}"
+      database-password: "${DATABASE_PASSWORD}"
+  - kind: Service
+    apiVersion: v1
+    metadata:
+      name: "${NAME}"
+    spec:
+      ports:
+        - name: web
+          port: 1323
+          targetPort: 1323
+      selector:
+        app: "${NAME}"
+  - kind: Route
+    apiVersion: v1
+    metadata:
+      name: "${NAME}"
+    spec:
+      host: "${APPLICATION_DOMAIN}"
+      to:
+        kind: Service
+        name: "${NAME}"
+  - kind: Deployment
+    apiVersion: apps/v1
+    metadata:
+      name: "${NAME}"
+    spec:
+      strategy:
+        type: RollingUpdate
+      replicas: 1
+      selector:
+        matchLabels:
+          app: "${NAME}"
+      template:
+        metadata:
+          labels:
+            app: "${NAME}"
+        spec:
+          containers:
+            - name: sample-flask
+              image: "${APP_IMAGE}:${APP_IMAGE_TAG}"
+              ports:
+                - containerPort: 1323
+              #readinessProbe:
+              #  timeoutSeconds: 3
+              #  initialDelaySeconds: 3
+              #  httpGet:
+              #    path: "/health"
+              #    port: 8080
+              #livenessProbe:
+              #  timeoutSeconds: 3
+              #  initialDelaySeconds: 30
+              #  httpGet:
+              #    path: "/health"
+              #    port: 8080
+              env:
+                - name: DB_HOST
+                  value: "${DATABASE_HOST}"
+                - name: DB_DBNAME
+                  value: "${DATABASE_NAME}"
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: "${NAME}"
+                      key: database-user
+                - name: DB_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: "${NAME}"
+                      key: database-password
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${DATABASE_SERVICE_NAME}
+    stringData:
+      database-name: ${DATABASE_NAME}
+      database-password: ${DATABASE_PASSWORD}
+      database-root-password: ${DATABASE_ROOT_PASSWORD}
+      database-user: ${DATABASE_USER}
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${DATABASE_SERVICE_NAME}
+    spec:
+      ports:
+        - name: mysql
+          port: 3306
+      selector:
+        name: ${DATABASE_SERVICE_NAME}
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: ${DATABASE_SERVICE_NAME}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${VOLUME_CAPACITY}
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: ${DATABASE_SERVICE_NAME}
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          name: ${DATABASE_SERVICE_NAME}
+      strategy:
+        type: RollingUpdate
+      template:
+        metadata:
+          labels:
+            name: ${DATABASE_SERVICE_NAME}
+        spec:
+          containers:
+            - env:
+                - name: MYSQL_USER
+                  valueFrom:
+                    secretKeyRef:
+                      key: database-user
+                      name: ${DATABASE_SERVICE_NAME}
+                - name: MYSQL_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: database-password
+                      name: ${DATABASE_SERVICE_NAME}
+                - name: MYSQL_ROOT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: database-root-password
+                      name: ${DATABASE_SERVICE_NAME}
+                - name: MYSQL_DATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      key: database-name
+                      name: ${DATABASE_SERVICE_NAME}
+              image: ${DATABASE_IMAGE}:${DATABASE_IMAGE_TAG}
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                exec:
+                  command:
+                    - /bin/sh
+                    - -i
+                    - -c
+                    - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -u $MYSQL_USER ping
+                initialDelaySeconds: 30
+                timeoutSeconds: 1
+              name: mysql
+              ports:
+                - containerPort: 3306
+              readinessProbe:
+                exec:
+                  command:
+                    - /bin/sh
+                    - -i
+                    - -c
+                    - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -u $MYSQL_USER ping
+                initialDelaySeconds: 5
+                timeoutSeconds: 1
+              volumeMounts:
+                - mountPath: /var/lib/mysql/data
+                  name: ${DATABASE_SERVICE_NAME}-data
+          volumes:
+            - name: ${DATABASE_SERVICE_NAME}-data
+              persistentVolumeClaim:
+                claimName: ${DATABASE_SERVICE_NAME}
+parameters:
+  - name: NAME
+    displayName: Name
+    description: The name assigned to all of the frontend objects defined in this template.
+    required: true
+    value: sample-flask
+  - name: NAMESPACE
+    displayName: Namespace
+    required: true
+    description: The OpenShift Namespace where the ImageStream resides.
+    value: openshift
+  - name: APP_IMAGE
+    displayName: Application Image
+    required: true
+  - name: APP_IMAGE_TAG
+    displayName: Application Image Tag
+    required: true
+    value: latest
+  - name: VOLUME_CAPACITY
+    displayName: Volume Capacity
+    description: Volume space available for data, e.g. 512Mi, 2Gi
+    value: 1Gi
+    required: true
+  - name: APPLICATION_DOMAIN
+    displayName: Application Hostname
+    description: The exposed hostname that will route to the Django service, if left
+      blank a value will be defaulted.
+    value: ''
+  - name: DATABASE_HOST
+    displayName: Database Hostname
+    required: true
+    value: mysql
+  - name: DATABASE_NAME
+    displayName: Database Name
+    required: true
+    value: isuumo
+  - name: DATABASE_USER
+    displayName: Database Username
+    required: true
+    value: isucon
+  - name: DATABASE_PASSWORD
+    displayName: Database User Password
+    required: true
+    value: 1suc0n!
+  - description: Password for the MySQL root user.
+    displayName: MySQL root user Password
+    name: DATABASE_ROOT_PASSWORD
+    required: true
+    value: root1234!
+  - description: The name of the OpenShift Service exposed for the database.
+    displayName: Database Service Name
+    name: DATABASE_SERVICE_NAME
+    required: true
+    value: mysql
+  - name: DATABASE_IMAGE
+    required: true
+    value: image-registry.openshift-image-registry.svc:5000/openshift/mysql
+  - name: DATABASE_IMAGE_TAG
+    required: true
+    value: 8.0-el8
