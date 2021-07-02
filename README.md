@@ -109,3 +109,55 @@ $ curl http://localhost:5000/api/chair/2 | jq .
   "width": 77
 }
 ```
+
+## 回答例
+### デプロイマニフェスト
+`openshift/deploy.yaml`にOpenShift Templateで記述したマニフェストを作成しました。
+利用するには以下のように扱えます。
+
+```
+$ oc process -f openshift/deploy.yaml -p APP_IMAGE=image-registry.openshift-image-registry.svc:5000/mosuke5-test/sample-flask -p APP_IMAGE_DIGEST=aaaa -o yaml
+```
+
+アプリケーションのイメージはタグ名ではなくダイジェスト値を指定する形式としています。理由は、Tekton Pipelineで利用できるS2I-python taskでは、コンテナイメージのビルド後にそのダイジェスト値をファイルで吐き出しており、使いやすかったためです。また、イメージをユニークとして扱うことができるためデプロイにも便利な点もあります。
+このあたりは、実装方法にさまざまなパターンがあるので、一概に今回の方法が正解というわけではないです。
+
+ヘルスチェック用に`/healthcheck`エンドポイントを追加しました。もちろん追加せずとも、既存の`/api/estate/low_priced`でも対応できますが、ヘルスチェック用途に大きなSQLを実行することが適切でなかったためです。
+
+### パイプライン
+Tektonを用いてパイプラインを構成しました。次のように実行できます。今回は、Webhookによる通知は作っていませんが、必要であればお知らせください。
+
+```
+$ oc apply -f openshift/tekton/pipeline.yaml
+task.tekton.dev/apply-manifests configured
+pipeline.tekton.dev/build-deploy-pipeline configured
+
+$ oc get pipeline
+NAME                    AGE
+build-deploy-pipeline   33m
+
+パイプライン実行
+$ oc apply -f openshift/tekton/pipeline-run.yaml
+pipelinerun.tekton.dev/build-deploy-pipeline-run created
+
+パイプラインが動き始める
+$ oc get pod
+NAME                                                         READY   STATUS     RESTARTS   AGE
+build-deploy-pipeline-run-fetch-repository-tzc9q-pod-fj2nj   0/1     Init:0/2   0          11s
+```
+
+Webコンソールからビルドの状況を確認できます。
+
+![tekton](images/tekton-status.png)
+
+初回デプロイ時は、データが入っておらずヘルスチェックが通らないため、アプリケーションが起動しません。初期データをロードしてあげましょう。
+
+```
+$ oc get pod
+NAME                                                           READY   STATUS      RESTARTS   AGE
+build-deploy-pipeline-run-build-push-image-znkpr-pod-mjjw8     0/4     Completed   0          5m24s
+build-deploy-pipeline-run-deploy-application-nq4f4-pod-9k747   0/1     Completed   0          102s
+build-deploy-pipeline-run-fetch-repository-tzc9q-pod-fj2nj     0/1     Completed   0          5m56s
+mysql-0                                                        1/1     Running     0          11m
+sample-flask-57cddd787f-qhntz                                  0/1     Running     1          92s
+```
