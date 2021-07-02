@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: build-deploy-pipeline-run
+spec:
+  pipelineRef:
+    name: build-deploy-pipeline
+  params: 
+    - name: git-url
+      value: https://github.com/mosuke5/migration-practice-for-flask
+    - name: git-revision
+      value: solutions
+    - name: image
+      value: image-registry.openshift-image-registry.svc:5000/my-app/flask-app
+    - name: manifest-dir
+      value: openshift
+  workspaces: 
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+

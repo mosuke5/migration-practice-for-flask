@@ -52,7 +52,7 @@ objects:
         spec:
           containers:
             - name: sample-flask
-              image: "${APP_IMAGE}:${APP_IMAGE_TAG}"
+              image: "${APP_IMAGE}@${APP_IMAGE_DIGEST}"
               ports:
                 - containerPort: 1323
               #readinessProbe:
@@ -193,8 +193,8 @@ parameters:
   - name: APP_IMAGE
     displayName: Application Image
     required: true
-  - name: APP_IMAGE_TAG
-    displayName: Application Image Tag
+  - name: APP_IMAGE_DIGEST
+    displayName: Application Image Digest
     required: true
     value: latest
   - name: VOLUME_CAPACITY
