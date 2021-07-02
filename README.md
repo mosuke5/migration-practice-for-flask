@@ -124,6 +124,64 @@ $ oc process -f openshift/deploy.yaml -p APP_IMAGE=image-registry.openshift-imag
 
 ヘルスチェック用に`/healthcheck`エンドポイントを追加しました。もちろん追加せずとも、既存の`/api/estate/low_priced`でも対応できますが、ヘルスチェック用途に大きなSQLを実行することが適切でなかったためです。
 
+### ビルド
+本回答では、TektonのS2I-pythonタスクを用いているため、BuildConfigを作成していませんが、もしBuildConfigを用いてビルドする場合は以下のようなマニフェストで対応できます。
+
+```yaml
+kind: Template
+apiVersion: v1
+metadata:
+  name: sample-flask
+labels:
+  template: sample-flask
+  app: sample-flask
+objects:
+- kind: BuildConfig
+  apiVersion: build.openshift.io/v1
+  metadata:
+    name: "${NAME}"
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: "${NAME}:latest"
+    strategy:
+      type: Source
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          namespace: "${NAMESPACE}"
+          name: 'python:3.8-ubi8'
+    source:
+      type: Git
+      git:
+        uri: "${SOURCE_REPOSITORY_URL}"
+        ref: "${SOURCE_REPOSITORY_REF}"
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    annotations:
+      description: Keeps track of changes in the application image
+parameters:
+- name: NAME
+  displayName: Name
+  required: true
+  value: sample-flask
+- name: NAMESPACE
+  displayName: Namespace
+  required: true
+  value: openshift
+- name: SOURCE_REPOSITORY_URL
+  displayName: Git Repository URL
+  required: true
+  value: https://github.com/mosuke5/migration-practice-for-flask
+- name: SOURCE_REPOSITORY_REF
+  displayName: Git Reference
+  required: true
+  value: main
+```
+
 ### パイプライン
 Tektonを用いてパイプラインを構成しました。次のように実行できます。今回は、Webhookによる通知は作っていませんが、必要であればお知らせください。
 
