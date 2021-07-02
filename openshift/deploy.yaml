@@ -55,18 +55,18 @@ objects:
               image: "${APP_IMAGE}@${APP_IMAGE_DIGEST}"
               ports:
                 - containerPort: 1323
-              #readinessProbe:
-              #  timeoutSeconds: 3
-              #  initialDelaySeconds: 3
-              #  httpGet:
-              #    path: "/health"
-              #    port: 8080
-              #livenessProbe:
-              #  timeoutSeconds: 3
-              #  initialDelaySeconds: 30
-              #  httpGet:
-              #    path: "/health"
-              #    port: 8080
+              readinessProbe:
+                timeoutSeconds: 3
+                initialDelaySeconds: 3
+                httpGet:
+                  path: "/healthcheck"
+                  port: 1323
+              livenessProbe:
+                timeoutSeconds: 3
+                initialDelaySeconds: 30
+                httpGet:
+                  path: "/healthcheck"
+                  port: 1323
               env:
                 - name: DB_HOST
                   value: "${DATABASE_HOST}"
