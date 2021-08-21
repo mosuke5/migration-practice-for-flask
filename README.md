@@ -67,7 +67,7 @@ mysql> select id,name from chair limit 10;
 mysql> exit
 
 // アプリケーションの依存ライブラリインストール
-$ pip3 install -r requirement
+$ pip3 install -r requirements.txt
 ...
 Successfully installed Flask-1.1.2 SQLAlchemy-1.3.19 mysql-connector-python-8.0.21 pyhumps-1.6.1
 
