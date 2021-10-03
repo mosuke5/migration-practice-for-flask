@@ -3,11 +3,11 @@ set -xe
 set -o pipefail
 
 CURRENT_DIR=$(cd $(dirname $0);pwd)
-export MYSQL_HOST=${MYSQL_HOST:-127.0.0.1}
-export MYSQL_PORT=${MYSQL_PORT:-3306}
-export MYSQL_USER=${MYSQL_USER:-isucon}
-export MYSQL_DBNAME=${MYSQL_DBNAME:-isuumo}
-export MYSQL_PWD=${MYSQL_PASS:-isucon}
+export MYSQL_HOST=${DB_HOST:-127.0.0.1}
+export MYSQL_PORT=${DB_PORT:-3306}
+export MYSQL_USER=${DB_USER:-isucon}
+export MYSQL_DBNAME=${DB_DBNAME:-isuumo}
+export MYSQL_PWD=${DB_PASS:-isucon}
 export LANG="C.UTF-8"
 cd $CURRENT_DIR
 
